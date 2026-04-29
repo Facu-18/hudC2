@@ -1,0 +1,4 @@
+
+> @cs2-hud/server@0.1.0 lint
+> tsc --noEmit
+

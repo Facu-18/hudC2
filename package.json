@@ -1,0 +1,21 @@
+{
+  "name": "cs2-hud",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "simulate": "npm run simulate -w apps/server"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.8",
+    "typescript": "^5.8.3"
+  }
+}
