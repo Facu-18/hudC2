@@ -1,4 +1,9 @@
 export interface GsiPayload {
+  player?: {
+    steamid?: string;
+    name?: string;
+    observer_slot?: number;
+  };
   map?: {
     name?: string;
     phase?: string;

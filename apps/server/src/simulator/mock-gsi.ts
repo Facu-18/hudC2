@@ -66,6 +66,11 @@ function payload(): GsiPayload {
       phase: tick % 18 < 3 ? "freezetime" : tick % 18 > 14 ? "bomb" : "live",
       bomb: tick % 18 > 14 ? "planted" : "none"
     },
+    player: {
+      steamid: tick % 2 === 0 ? "7656119T0" : "7656119CT0",
+      name: tick % 2 === 0 ? "RAZE" : "KRYSTAL",
+      observer_slot: 1
+    },
     allplayers,
     bomb: {
       state: tick % 18 > 14 ? "planted" : "carried",
