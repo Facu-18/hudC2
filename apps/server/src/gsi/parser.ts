@@ -84,6 +84,7 @@ export function parseGameState(payload: GsiPayload): GameState {
       bomb: pick<RoundBombState>(payload.round?.bomb, roundBombStates, "none")
     },
     allplayers,
+    observedPlayerSteamId: text(payload.player?.steamid) || undefined,
     bomb: {
       state: pick<BombState>(payload.bomb?.state, bombStates, "none"),
       countdown: text(payload.bomb?.countdown, "0"),

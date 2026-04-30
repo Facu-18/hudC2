@@ -72,6 +72,7 @@ export interface GameState {
   map: GameMapState;
   round: GameRoundState;
   allplayers: Record<string, Player>;
+  observedPlayerSteamId?: string;
   bomb: Bomb;
   grenades: Record<string, Grenade>;
   updatedAt: string;
