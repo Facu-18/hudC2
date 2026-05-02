@@ -3,38 +3,33 @@ import { getEquipmentIconPath, WeaponIcon } from "./WeaponIcon";
 
 interface PlayerCardProps {
   player: Player;
-  variant?: "compact" | "featured";
 }
 
 const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:3000";
 
-// ─── Theme ───────────────────────────────────────────────────────────────────
-// Colors extracted from the Figma Frame 3 design:
-//  base      → bright-blue main background
-//  nameBg    → black name bar
-//  iconCell  → darker-blue for icon cells in stats row
-//  numCell   → mid-blue for number cells in stats row
-//  moneyBg   → same bright-blue as base for the money cell
-//  moneyText → retro green
 function getTheme(team: Player["team"]) {
   if (team === "CT") {
     return {
-      baseBg: "#3D7EFF",        // bright blue background
-      nameBg: "#000000",        // black name bar
-      iconCellBg: "#1A3A6E",    // dark blue – icon cells
-      numCellBg: "#0F2147",     // darker blue – number cells
-      moneyBg: "#3D7EFF",       // same as base – money cell bg
-      moneyText: "#00FF41",     // retro green
+      baseBg: "#1e90ff",
+      nameBg: "rgba(6,20,41,0.97)",
+      iconCellBg: "#0a1f3c",
+      numCellBg: "#061429",
+      moneyBg: "#0d1e3a",
+      moneyText: "#ffd700",
+      accentColor: "#1e90ff",
+      accentGlow: "rgba(30,144,255,0.22)",
       fallbackImage: "/players/ct.png",
     };
   }
   return {
-    baseBg: "#FF6B2B",          // orange background
-    nameBg: "#000000",
-    iconCellBg: "#7B2A00",
-    numCellBg: "#4A1800",
-    moneyBg: "#FF6B2B",
-    moneyText: "#00FF41",
+    baseBg: "#ff6600",
+    nameBg: "rgba(20,8,0,0.97)",
+    iconCellBg: "#3a1500",
+    numCellBg: "#250d00",
+    moneyBg: "#2e1000",
+    moneyText: "#ffd700",
+    accentColor: "#ff6600",
+    accentGlow: "rgba(255,102,0,0.22)",
     fallbackImage: "/players/tt.png",
   };
 }
@@ -43,7 +38,6 @@ function getPlayerImage(player: Player) {
   return `${serverUrl}/assets/players/${player.steamId}`;
 }
 
-// Crosshair icon (SVG)
 function CrosshairIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -57,7 +51,6 @@ function CrosshairIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-// Skull icon (SVG – more accurate skull shape)
 function SkullIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="currentColor">
@@ -70,246 +63,90 @@ function SkullIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-// Utility grenades row
-function UtilityIcons({ player, compact = false }: { player: Player; compact?: boolean }) {
-  const utility = Object.values(player.weapons)
-    .filter((w) => w.name !== "weapon_knife")
+// Small grenade icons for the equipment strip
+function UtilityStrip({ player }: { player: Player }) {
+  const grenades = Object.values(player.weapons)
     .filter((w) =>
       w.type.toLowerCase().includes("grenade") ||
       w.name.includes("grenade") ||
       w.name.includes("molotov")
     )
-    .slice(0, compact ? 3 : 4);
-
-  const size = compact ? "h-7 w-7" : "h-10 w-10";
-  const gap = compact ? "gap-1" : "gap-2";
+    .slice(0, 3);
 
   return (
-    <div className={`flex items-center ${gap}`}>
-      {utility.map((w, i) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+      {grenades.map((w, i) => (
         <img
           key={`${w.name}-${i}`}
           src={getEquipmentIconPath(w.name)}
           alt={w.name.replace("weapon_", "")}
-          className={`${size} object-contain brightness-0 invert`}
+          style={{ height: 15, width: 15, objectFit: "contain", filter: "brightness(0) invert(1)", opacity: 0.9 }}
         />
       ))}
     </div>
   );
 }
 
-// ─── Featured card (observed / center player) ─────────────────────────────────
-// Matches Figma Frame 3 exactly:
-//  • Blue rect fills the card body
-//  • Player image is taller than the card – head overflows above the top edge
-//  • Utility icons + armor at the bottom of the blue area (left & right)
-//  • Weapon left, HP number right, both sitting on the very bottom of the blue area
-//  • Black name bar below
-//  • Stats row with alternating dark cells at the very bottom
-function FeaturedCard({ player, theme }: { player: Player; theme: ReturnType<typeof getTheme> }) {
+// ─── Compact card ─────────────────────────────────────────────────────────────
+//
+// Layout (from bottom up):
+//   STATS_H  (20px) — K / D / $
+//   NAME_H   (22px) — player name
+//   EQUIP_H  (26px) — weapon icon (left) + grenade icons (right)  ← no more collision
+//   PHOTO_H  (128px) — player image + HP overlay + armor overlay
+//   OVERFLOW (36px)  — image head overflows above the card
+//
+export function PlayerCard({ player }: PlayerCardProps) {
+  if (player.state.health <= 0) return null;
+
+  const theme = getTheme(player.team);
   const activeWeapon = Object.values(player.weapons).find((w) => w.state === "active");
 
-  // Card body dimensions (blue area + name bar + stats row, no overflow)
-  const CARD_W = 310;
-  const BLUE_H = 320;   // blue photo area
-  const NAME_H = 52;    // black name bar
-  const STATS_H = 52;   // stats row
-  const TOTAL_H = BLUE_H + NAME_H + STATS_H;
-  const OVERFLOW = 120; // how far the image spills above the blue area
+  const CARD_W  = 120;
+  const PHOTO_H = 128;
+  const EQUIP_H = 26;
+  const NAME_H  = 22;
+  const STATS_H = 20;
+  const OVERFLOW = 36;
+  // Positions from bottom of outer div
+  const equipBottom = STATS_H + NAME_H;               // 42
+  const photoBottom = STATS_H + NAME_H + EQUIP_H;     // 68
+  const TOTAL_H = PHOTO_H + EQUIP_H + NAME_H + STATS_H; // 196
+
+  const hp = Math.max(0, Math.min(100, player.state.health));
+  const hpColor = hp > 60 ? "#22cc44" : hp > 30 ? "#e6c020" : "#cc2222";
 
   return (
-    // Outer wrapper must be tall enough to show the overflowing image
     <div
-      style={{ width: CARD_W, height: TOTAL_H + OVERFLOW, position: "relative" }}
+      style={{
+        width: CARD_W,
+        height: TOTAL_H + OVERFLOW,
+        position: "relative",
+        filter: `drop-shadow(0 0 10px ${theme.accentGlow})`,
+      }}
     >
-      {/* ── Blue background (card body, bottom-aligned) ── */}
+      {/* Top accent line */}
       <div
         style={{
           position: "absolute",
-          bottom: STATS_H + NAME_H,
+          top: OVERFLOW,
           left: 0,
           right: 0,
-          height: BLUE_H,
-          backgroundColor: theme.baseBg,
+          height: 2,
+          background: theme.accentColor,
+          zIndex: 35,
         }}
       />
 
-      {/* ── Player image (overflows above the blue area) ── */}
-      <img
-        src={getPlayerImage(player)}
-        alt={player.name}
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H,
-          left: "50%",
-          transform: "translateX(-50%)",
-          height: BLUE_H + OVERFLOW,
-          maxWidth: "none",
-          objectFit: "contain",
-          zIndex: 10,
-        }}
-        onError={(e) => { e.currentTarget.src = theme.fallbackImage; }}
-      />
-
-      {/* ── Overlay: utility icons + armor ── */}
+      {/* Photo area background */}
       <div
         style={{
           position: "absolute",
-          bottom: STATS_H + NAME_H + 56,
-          left: 16,
-          right: 16,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <UtilityIcons player={player} />
-        {player.state.armor > 0 && (
-          <img
-            src={player.state.helmet ? "/equipment/armor_helmet.svg" : "/equipment/armor.svg"}
-            alt="Armor"
-            style={{ height: 52, width: 52, objectFit: "contain", filter: "brightness(0) invert(1)" }}
-          />
-        )}
-      </div>
-
-      {/* ── Overlay: active weapon (left) + HP (right) ── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H + 6,
-          left: 12,
-          right: 12,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-        }}
-      >
-        <WeaponIcon weaponName={activeWeapon?.name} className="h-14 w-44 object-contain brightness-0 invert" />
-        <span
-          style={{
-            fontFamily: "'Bebas Neue', Impact, sans-serif",
-            fontSize: 80,
-            fontWeight: 900,
-            lineHeight: 1,
-            color: "#FFFFFF",
-            textShadow: "2px 2px 8px rgba(0,0,0,0.5)",
-            letterSpacing: "-2px",
-          }}
-        >
-          {player.state.health}
-        </span>
-      </div>
-
-      {/* ── Name bar (black) ── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H,
+          bottom: photoBottom,
           left: 0,
           right: 0,
-          height: NAME_H,
-          backgroundColor: theme.nameBg,
-          display: "flex",
-          alignItems: "center",
-          paddingLeft: 16,
-          zIndex: 30,
-          overflow: "hidden",
-        }}
-      >
-        <span
-          style={{
-            color: "#FFFFFF",
-            fontSize: 34,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.12em",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            fontFamily: "Arial Black, Arial, sans-serif",
-          }}
-        >
-          {player.name}
-        </span>
-      </div>
-
-      {/* ── Stats row ── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: STATS_H,
-          display: "flex",
-          zIndex: 30,
-        }}
-      >
-        {/* Crosshair icon cell */}
-        <div style={{ width: 56, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "white" }}>
-          <CrosshairIcon size={28} />
-        </div>
-        {/* Kills number cell */}
-        <div style={{ width: 64, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
-          <span style={{ color: "#FFFFFF", fontSize: 30, fontWeight: 700, fontFamily: "Arial, sans-serif" }}>
-            {player.match_stats.kills}
-          </span>
-        </div>
-        {/* Skull icon cell */}
-        <div style={{ width: 56, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "white" }}>
-          <SkullIcon size={28} />
-        </div>
-        {/* Deaths number cell */}
-        <div style={{ width: 64, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
-          <span style={{ color: "#FFFFFF", fontSize: 30, fontWeight: 700, fontFamily: "Arial, sans-serif" }}>
-            {player.match_stats.deaths}
-          </span>
-        </div>
-        {/* Money cell – flex-1 fills remaining width */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.moneyBg }}>
-          <span
-            style={{
-              color: theme.moneyText,
-              fontSize: 28,
-              fontWeight: 700,
-              fontFamily: "'Courier New', Courier, monospace",
-              letterSpacing: "0.15em",
-              textShadow: `0 0 8px ${theme.moneyText}`,
-            }}
-          >
-            {player.state.money}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Compact card (non-observed players) ─────────────────────────────────────
-function CompactCard({ player, theme }: { player: Player; theme: ReturnType<typeof getTheme> }) {
-  const activeWeapon = Object.values(player.weapons).find((w) => w.state === "active");
-
-  const CARD_W = 148;
-  const BLUE_H = 170;
-  const NAME_H = 28;
-  const STATS_H = 28;
-  const OVERFLOW = 50;
-  const TOTAL_H = BLUE_H + NAME_H + STATS_H;
-
-  return (
-    <div style={{ width: CARD_W, height: TOTAL_H + OVERFLOW, position: "relative" }}>
-      {/* Blue background */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H,
-          left: 0,
-          right: 0,
-          height: BLUE_H,
-          backgroundColor: theme.baseBg,
+          height: PHOTO_H,
+          background: `linear-gradient(180deg, ${theme.baseBg}ee 0%, ${theme.baseBg}99 100%)`,
         }}
       />
 
@@ -319,66 +156,101 @@ function CompactCard({ player, theme }: { player: Player; theme: ReturnType<type
         alt={player.name}
         style={{
           position: "absolute",
-          bottom: STATS_H + NAME_H,
+          bottom: photoBottom,
           left: "50%",
           transform: "translateX(-50%)",
-          height: BLUE_H + OVERFLOW,
-          maxWidth: "none",
+          height: PHOTO_H + OVERFLOW,
+          maxWidth: CARD_W,
           objectFit: "contain",
           zIndex: 10,
         }}
         onError={(e) => { e.currentTarget.src = theme.fallbackImage; }}
       />
 
-      {/* Utility + armor */}
+      {/* Armor icon — top-right of photo area */}
+      {player.state.armor > 0 && (
+        <img
+          src={player.state.helmet ? "/equipment/armor_helmet.svg" : "/equipment/armor.svg"}
+          alt="Armor"
+          style={{
+            position: "absolute",
+            top: OVERFLOW + 5,
+            right: 4,
+            height: 14,
+            width: 14,
+            objectFit: "contain",
+            filter: "brightness(0) invert(1)",
+            opacity: 0.8,
+            zIndex: 20,
+          }}
+        />
+      )}
+
+      {/* HP number — bottom-right of photo area */}
+      <span
+        style={{
+          position: "absolute",
+          bottom: photoBottom + 5,
+          right: 5,
+          zIndex: 20,
+          fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+          fontSize: 28,
+          fontWeight: 700,
+          lineHeight: 1,
+          color: "#ffffff",
+          textShadow: "1px 1px 8px rgba(0,0,0,0.85)",
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {player.state.health}
+      </span>
+
+      {/* HP bar — 3px strip at the bottom edge of photo area */}
       <div
         style={{
           position: "absolute",
-          bottom: STATS_H + NAME_H + 30,
-          left: 6,
-          right: 6,
-          zIndex: 20,
+          bottom: photoBottom,
+          left: 0,
+          width: CARD_W,
+          height: 3,
+          background: "rgba(0,0,0,0.5)",
+          zIndex: 26,
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${hp}%`,
+            background: hpColor,
+            boxShadow: `0 0 6px ${hpColor}`,
+            transition: "width 0.3s ease, background 0.3s ease",
+          }}
+        />
+      </div>
+
+      {/* ── Equipment strip — weapon LEFT, grenades RIGHT, no overlap ── */}
+      <div
+        style={{
+          position: "absolute",
+          bottom: equipBottom,
+          left: 0,
+          right: 0,
+          height: EQUIP_H,
+          background: "rgba(5,5,12,0.97)",
+          borderTop: "1px solid rgba(255,255,255,0.05)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          paddingLeft: 5,
+          paddingRight: 5,
+          zIndex: 25,
         }}
       >
-        <UtilityIcons player={player} compact />
-        {player.state.armor > 0 && (
-          <img
-            src={player.state.helmet ? "/equipment/armor_helmet.svg" : "/equipment/armor.svg"}
-            alt="Armor"
-            style={{ height: 24, width: 24, objectFit: "contain", filter: "brightness(0) invert(1)" }}
-          />
-        )}
-      </div>
-
-      {/* Weapon + HP */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H + 4,
-          left: 6,
-          right: 6,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-        }}
-      >
-        <WeaponIcon weaponName={activeWeapon?.name} className="h-8 w-20 object-contain brightness-0 invert" />
-        <span
-          style={{
-            fontFamily: "'Bebas Neue', Impact, sans-serif",
-            fontSize: 38,
-            fontWeight: 900,
-            lineHeight: 1,
-            color: "#FFFFFF",
-            textShadow: "1px 1px 4px rgba(0,0,0,0.5)",
-          }}
-        >
-          {player.state.health}
-        </span>
+        <WeaponIcon
+          weaponName={activeWeapon?.name}
+          className="h-[15px] w-[52px] object-contain brightness-0 invert"
+        />
+        <UtilityStrip player={player} />
       </div>
 
       {/* Name bar */}
@@ -390,31 +262,34 @@ function CompactCard({ player, theme }: { player: Player; theme: ReturnType<type
           right: 0,
           height: NAME_H,
           backgroundColor: theme.nameBg,
+          borderTop: "1px solid rgba(255,255,255,0.04)",
           display: "flex",
           alignItems: "center",
-          paddingLeft: 8,
+          paddingLeft: 5,
+          paddingRight: 5,
           zIndex: 30,
           overflow: "hidden",
         }}
       >
         <span
           style={{
-            color: "#FFFFFF",
-            fontSize: 16,
+            color: "#f0f4ff",
+            fontSize: 12,
             fontWeight: 700,
             textTransform: "uppercase",
-            letterSpacing: "0.08em",
+            letterSpacing: "0.05em",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
-            fontFamily: "Arial Black, Arial, sans-serif",
+            fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+            lineHeight: 1,
           }}
         >
           {player.name}
         </span>
       </div>
 
-      {/* Stats row */}
+      {/* Stats row — K / D / $ */}
       <div
         style={{
           position: "absolute",
@@ -426,44 +301,46 @@ function CompactCard({ player, theme }: { player: Player; theme: ReturnType<type
           zIndex: 30,
         }}
       >
-        <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "white" }}>
-          <CrosshairIcon size={14} />
+        <div style={{ width: 22, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "rgba(255,255,255,0.5)" }}>
+          <CrosshairIcon size={10} />
         </div>
-        <div style={{ width: 32, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
-          <span style={{ color: "#FFFFFF", fontSize: 15, fontWeight: 700 }}>{player.match_stats.kills}</span>
+        <div style={{ width: 26, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
+          <span style={{ color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif" }}>
+            {player.match_stats.kills}
+          </span>
         </div>
-        <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "white" }}>
-          <SkullIcon size={14} />
+        <div style={{ width: 22, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "rgba(255,255,255,0.5)" }}>
+          <SkullIcon size={10} />
         </div>
-        <div style={{ width: 32, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
-          <span style={{ color: "#FFFFFF", fontSize: 15, fontWeight: 700 }}>{player.match_stats.deaths}</span>
+        <div style={{ width: 26, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
+          <span style={{ color: "#fff", fontSize: 12, fontWeight: 700, fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif" }}>
+            {player.match_stats.deaths}
+          </span>
         </div>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.moneyBg }}>
+        {/* Money */}
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: theme.moneyBg,
+            borderLeft: "1px solid rgba(255,215,0,0.07)",
+          }}
+        >
           <span
             style={{
               color: theme.moneyText,
-              fontSize: 13,
+              fontSize: 10,
               fontWeight: 700,
-              fontFamily: "'Courier New', Courier, monospace",
-              letterSpacing: "0.1em",
-              textShadow: `0 0 6px ${theme.moneyText}`,
+              fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+              textShadow: `0 0 6px ${theme.moneyText}70`,
             }}
           >
-            {player.state.money}
+            ${player.state.money}
           </span>
         </div>
       </div>
     </div>
   );
-}
-
-// ─── Public export ────────────────────────────────────────────────────────────
-export function PlayerCard({ player, variant = "compact" }: PlayerCardProps) {
-  const theme = getTheme(player.team);
-
-  if (variant === "featured") {
-    return <FeaturedCard player={player} theme={theme} />;
-  }
-
-  return <CompactCard player={player} theme={theme} />;
 }

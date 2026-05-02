@@ -20,6 +20,7 @@ function player(steamId: string, name: string, team: "CT" | "T", index: number) 
       state: {
         health: damaged,
         armor: damaged > 0 ? 100 - index * 8 : 0,
+        helmet: index % 2 === 0,
         money: 800 + index * 450,
         equip_value: 2600 + index * 350
       },
@@ -33,7 +34,26 @@ function player(steamId: string, name: string, team: "CT" | "T", index: number) 
         weapon_0: {
           name: weapons[(index + tick) % weapons.length],
           type: "Rifle",
-          state: "active"
+          state: "active",
+          ammo_clip: Math.max(0, 30 - ((tick + index) % 31)),
+          ammo_clip_max: 30,
+          ammo_reserve: 90
+        },
+        weapon_1: {
+          name: "weapon_flashbang",
+          type: "Grenade",
+          state: "holstered",
+          ammo_clip: 1,
+          ammo_clip_max: 1,
+          ammo_reserve: 0
+        },
+        weapon_2: {
+          name: team === "T" ? "weapon_molotov" : "weapon_smokegrenade",
+          type: "Grenade",
+          state: "holstered",
+          ammo_clip: 1,
+          ammo_clip_max: 1,
+          ammo_reserve: 0
         }
       },
       position: `${index * 120}, ${team === "CT" ? 300 : -300}, 0`,

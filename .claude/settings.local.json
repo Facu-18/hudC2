@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(json|js|ts|mjs|config\\)$\")",
+      "Bash(npx tsc *)"
+    ]
+  }
+}

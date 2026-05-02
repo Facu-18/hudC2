@@ -40,6 +40,7 @@ export function parseGameState(payload: GsiPayload): GameState {
         state: {
           health: num(player.state?.health, 0),
           armor: num(player.state?.armor, 0),
+          helmet: player.state?.helmet === true,
           money: num(player.state?.money, 0),
           equip_value: num(player.state?.equip_value, 0)
         },
@@ -55,7 +56,10 @@ export function parseGameState(payload: GsiPayload): GameState {
             {
               name: text(weapon.name, "weapon_knife"),
               type: text(weapon.type, "Knife"),
-              state: pick<WeaponState>(weapon.state, weaponStates, "holstered")
+              state: pick<WeaponState>(weapon.state, weaponStates, "holstered"),
+              ammo_clip: num(weapon.ammo_clip, 0),
+              ammo_clip_max: num(weapon.ammo_clip_max, 0),
+              ammo_reserve: num(weapon.ammo_reserve, 0)
             }
           ])
         ),

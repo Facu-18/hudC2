@@ -28,6 +28,7 @@ export interface GameRoundState {
 export interface PlayerState {
   health: number;
   armor: number;
+  helmet: boolean;
   money: number;
   equip_value: number;
 }
@@ -43,6 +44,9 @@ export interface PlayerWeapon {
   name: string;
   type: string;
   state: WeaponState;
+  ammo_clip: number;
+  ammo_clip_max: number;
+  ammo_reserve: number;
 }
 
 export interface Player {
