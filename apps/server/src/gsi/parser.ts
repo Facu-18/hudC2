@@ -29,44 +29,58 @@ function text(value: unknown, fallback = ""): string {
   return typeof value === "string" ? value : fallback;
 }
 
+function record(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 export function parseGameState(payload: GsiPayload): GameState {
   const allplayers = Object.fromEntries(
-    Object.entries(payload.allplayers ?? {}).map(([steamId, player]) => [
+    Object.entries(record(payload.allplayers)).map(([steamId, rawPlayer]) => {
+      const player = record(rawPlayer);
+      const state = record(player.state);
+      const matchStats = record(player.match_stats);
+
+      return [
       steamId,
       {
         steamId,
         name: text(player.name, "Unknown"),
         team: pick<TeamSide>(player.team, ["CT", "T"], "CT"),
         state: {
-          health: num(player.state?.health, 0),
-          armor: num(player.state?.armor, 0),
-          helmet: player.state?.helmet === true,
-          money: num(player.state?.money, 0),
-          equip_value: num(player.state?.equip_value, 0)
+          health: num(state.health, 0),
+          armor: num(state.armor, 0),
+          helmet: state.helmet === true,
+          money: num(state.money, 0),
+          equip_value: num(state.equip_value, 0)
         },
         match_stats: {
-          kills: num(player.match_stats?.kills, 0),
-          deaths: num(player.match_stats?.deaths, 0),
-          assists: num(player.match_stats?.assists, 0),
-          adr: num(player.match_stats?.adr, 0)
+          kills: num(matchStats.kills, 0),
+          deaths: num(matchStats.deaths, 0),
+          assists: num(matchStats.assists, 0),
+          adr: num(matchStats.adr, 0)
         },
         weapons: Object.fromEntries(
-          Object.entries(player.weapons ?? {}).map(([slot, weapon]) => [
-            slot,
-            {
-              name: text(weapon.name, "weapon_knife"),
-              type: text(weapon.type, "Knife"),
-              state: pick<WeaponState>(weapon.state, weaponStates, "holstered"),
-              ammo_clip: num(weapon.ammo_clip, 0),
-              ammo_clip_max: num(weapon.ammo_clip_max, 0),
-              ammo_reserve: num(weapon.ammo_reserve, 0)
-            }
-          ])
+          Object.entries(record(player.weapons)).map(([slot, rawWeapon]) => {
+            const weapon = record(rawWeapon);
+
+            return [
+              slot,
+              {
+                name: text(weapon.name, "weapon_knife"),
+                type: text(weapon.type, "Knife"),
+                state: pick<WeaponState>(weapon.state, weaponStates, "holstered"),
+                ammo_clip: num(weapon.ammo_clip, 0),
+                ammo_clip_max: num(weapon.ammo_clip_max, 0),
+                ammo_reserve: num(weapon.ammo_reserve, 0)
+              }
+            ];
+          })
         ),
         position: text(player.position),
         forward: text(player.forward)
       }
-    ])
+    ];
+    })
   );
 
   return {
@@ -87,6 +101,12 @@ export function parseGameState(payload: GsiPayload): GameState {
       phase: pick<RoundPhase>(payload.round?.phase, roundPhases, "freezetime"),
       bomb: pick<RoundBombState>(payload.round?.bomb, roundBombStates, "none")
     },
+    phaseCountdown: payload.phase_countdowns
+      ? {
+          phase: text(payload.phase_countdowns.phase),
+          phaseEndsIn: text(payload.phase_countdowns.phase_ends_in, "0")
+        }
+      : undefined,
     allplayers,
     observedPlayerSteamId: text(payload.player?.steamid) || undefined,
     bomb: {
@@ -95,14 +115,18 @@ export function parseGameState(payload: GsiPayload): GameState {
       player: text(payload.bomb?.player)
     },
     grenades: Object.fromEntries(
-      Object.entries(payload.grenades ?? {}).map(([id, grenade]) => [
-        id,
-        {
-          owner: text(grenade.owner),
-          type: pick<GrenadeType>(grenade.type, grenadeTypes, "smoke"),
-          lifetime: text(grenade.lifetime, "0")
-        }
-      ])
+      Object.entries(record(payload.grenades)).map(([id, rawGrenade]) => {
+        const grenade = record(rawGrenade);
+
+        return [
+          id,
+          {
+            owner: text(grenade.owner),
+            type: pick<GrenadeType>(grenade.type, grenadeTypes, "smoke"),
+            lifetime: text(grenade.lifetime, "0")
+          }
+        ];
+      })
     ),
     updatedAt: new Date().toISOString()
   };

@@ -4,6 +4,7 @@ import { parseGameState } from "./parser.js";
 import type { GsiPayload } from "./types.js";
 
 export const gsiRouter = Router();
+const gsiAuthToken = process.env.GSI_AUTH_TOKEN ?? "cs2-hud-dev";
 let latestRawPayload: GsiPayload | undefined;
 let latestIncomingPayload: GsiPayload | undefined;
 
@@ -36,6 +37,12 @@ function mergePayload<T extends Record<string, unknown>>(current: T | undefined,
 
 gsiRouter.post("/gsi", (req, res) => {
   latestIncomingPayload = req.body as GsiPayload;
+
+  if (latestIncomingPayload.auth?.token !== gsiAuthToken) {
+    res.status(401).json({ error: "Invalid GSI auth token" });
+    return;
+  }
+
   latestRawPayload = mergePayload(latestRawPayload as Record<string, unknown> | undefined, latestIncomingPayload as Record<string, unknown>) as GsiPayload;
   const gameState = parseGameState(latestRawPayload);
   emitGameState(gameState);

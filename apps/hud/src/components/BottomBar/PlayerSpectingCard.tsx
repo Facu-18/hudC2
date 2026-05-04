@@ -34,7 +34,7 @@ function getTheme(team: Player["team"]) {
 }
 
 function getPlayerImage(player: Player) {
-  return `${serverUrl}/assets/players/${player.steamId}`;
+  return `${serverUrl}/assets/players/${encodeURIComponent(player.steamId)}`;
 }
 
 function CrosshairIcon({ size = 24 }: { size?: number }) {

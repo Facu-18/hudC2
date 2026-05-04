@@ -1,6 +1,7 @@
 import type { GsiPayload } from "../gsi/types.js";
 
 const endpoint = process.env.GSI_URL ?? "http://localhost:3000/gsi";
+const authToken = process.env.GSI_AUTH_TOKEN ?? "cs2-hud-dev";
 const ctNames = ["KRYSTAL", "NOVA", "BISHOP", "VEX", "MIRAGE"];
 const tNames = ["RAZE", "CIPHER", "EMBER", "SAINT", "KAI"];
 const weapons = ["weapon_ak47", "weapon_awp", "weapon_m4a1_silencer", "weapon_deagle", "weapon_galilar"];
@@ -75,6 +76,9 @@ function payload(): GsiPayload {
   };
 
   return {
+    auth: {
+      token: authToken
+    },
     map: {
       name: "de_mirage",
       phase: "live",
@@ -85,6 +89,10 @@ function payload(): GsiPayload {
     round: {
       phase: tick % 18 < 3 ? "freezetime" : tick % 18 > 14 ? "bomb" : "live",
       bomb: tick % 18 > 14 ? "planted" : "none"
+    },
+    phase_countdowns: {
+      phase: tick % 18 < 3 ? "freezetime" : tick % 18 > 14 ? "bomb" : "live",
+      phase_ends_in: String(Math.max(0, tick % 18 < 3 ? 3 - (tick % 18) : 18 - (tick % 18)))
     },
     player: {
       steamid: tick % 2 === 0 ? "7656119T0" : "7656119CT0",

@@ -4,7 +4,7 @@ const equipmentIconMap: Record<string, string> = {
   weapon_awp: "awp.svg",
   weapon_m4a1_silencer: "m4a1_silencer.svg",
   weapon_m4a1: "m4a1.svg",
-  weapon_m4a4: "m4a4.svg",
+  weapon_m4a4: "m4a1.svg",
   weapon_galilar: "galilar.svg",
   weapon_famas: "famas.svg",
   weapon_sg556: "sg556.svg",

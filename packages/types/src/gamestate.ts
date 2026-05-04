@@ -25,6 +25,11 @@ export interface GameRoundState {
   bomb: RoundBombState;
 }
 
+export interface PhaseCountdown {
+  phase: string;
+  phaseEndsIn: string;
+}
+
 export interface PlayerState {
   health: number;
   armor: number;
@@ -75,6 +80,7 @@ export interface Grenade {
 export interface GameState {
   map: GameMapState;
   round: GameRoundState;
+  phaseCountdown?: PhaseCountdown;
   allplayers: Record<string, Player>;
   observedPlayerSteamId?: string;
   bomb: Bomb;

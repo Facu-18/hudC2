@@ -1,4 +1,7 @@
 export interface GsiPayload {
+  auth?: {
+    token?: string;
+  };
   player?: {
     steamid?: string;
     name?: string;
@@ -14,6 +17,10 @@ export interface GsiPayload {
   round?: {
     phase?: string;
     bomb?: string;
+  };
+  phase_countdowns?: {
+    phase?: string;
+    phase_ends_in?: string;
   };
   allplayers?: Record<string, GsiPlayerPayload>;
   bomb?: {

@@ -1,10 +1,26 @@
 interface RoundTimerProps {
   phase: string;
+  phaseEndsIn?: string;
   round: number;
   mapName: string;
 }
 
-export function RoundTimer({ phase, round, mapName }: RoundTimerProps) {
+function formatCountdown(value?: string) {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return undefined;
+  }
+
+  const wholeSeconds = Math.ceil(seconds);
+  const minutes = Math.floor(wholeSeconds / 60);
+  const remainingSeconds = wholeSeconds % 60;
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
+export function RoundTimer({ phase, phaseEndsIn, round, mapName }: RoundTimerProps) {
+  const countdown = formatCountdown(phaseEndsIn);
+
   return (
     <div
       style={{
@@ -59,7 +75,7 @@ export function RoundTimer({ phase, round, mapName }: RoundTimerProps) {
         }}
       />
 
-      {/* Phase */}
+      {/* Countdown / phase */}
       <span
         style={{
           fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
@@ -72,7 +88,7 @@ export function RoundTimer({ phase, round, mapName }: RoundTimerProps) {
           marginBottom: 4,
         }}
       >
-        {phase}
+        {countdown ?? phase}
       </span>
 
       {/* Round number */}
@@ -87,7 +103,7 @@ export function RoundTimer({ phase, round, mapName }: RoundTimerProps) {
           lineHeight: 1,
         }}
       >
-        Round {round + 1}
+        {countdown ? phase : `Round ${round + 1}`}
       </span>
     </div>
   );

@@ -7,17 +7,33 @@ const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:3000";
 function UploadForm({ type, label }: { type: "teams" | "players"; label: string }) {
   const [id, setId] = useState("");
   const [status, setStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const response = await fetch(`${serverUrl}/assets/${type}/${id}`, {
-      method: "POST",
-      body: data
-    });
+    setSubmitting(true);
+    setStatus("");
 
-    setStatus(response.ok ? "Uploaded" : "Upload failed");
+    try {
+      const response = await fetch(`${serverUrl}/assets/${type}/${encodeURIComponent(id)}`, {
+        method: "POST",
+        body: data
+      });
+
+      if (response.ok) {
+        setStatus("Uploaded");
+        return;
+      }
+
+      const body = await response.json().catch(() => undefined) as { error?: string } | undefined;
+      setStatus(body?.error ?? "Upload failed");
+    } catch {
+      setStatus("Upload failed: server unreachable");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -28,11 +44,13 @@ function UploadForm({ type, label }: { type: "teams" | "players"; label: string 
         value={id}
         onChange={(event) => setId(event.target.value)}
         placeholder={`${type === "teams" ? "team" : "steam"} id`}
+        pattern="[A-Za-z0-9_-]+"
+        title="Use only letters, numbers, underscores, and hyphens"
         required
       />
       <input className="rounded bg-zinc-800 px-4 py-3 ring-1 ring-white/10" type="file" name="file" accept="image/*" required />
-      <button className="rounded bg-white px-4 py-3 font-black uppercase text-zinc-950" type="submit">
-        Upload
+      <button className="rounded bg-white px-4 py-3 font-black uppercase text-zinc-950 disabled:opacity-60" type="submit" disabled={submitting}>
+        {submitting ? "Uploading" : "Upload"}
       </button>
       <div className="h-5 text-sm font-bold text-zinc-400">{status}</div>
     </form>

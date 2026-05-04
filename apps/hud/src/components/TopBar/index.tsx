@@ -26,6 +26,7 @@ export function TopBar({ gameState }: TopBarProps) {
         {/* Central timer — no gap, butts up against score panels */}
         <RoundTimer
           phase={gameState.round.phase}
+          phaseEndsIn={gameState.phaseCountdown?.phaseEndsIn}
           round={gameState.map.round}
           mapName={gameState.map.name}
         />
