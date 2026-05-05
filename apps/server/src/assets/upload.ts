@@ -115,5 +115,6 @@ assetsRouter.get("/assets/:type/:id", validateAssetParams, (req, res) => {
     return;
   }
 
+  res.set("Cache-Control", "no-store, max-age=0");
   res.sendFile(filePath);
 });

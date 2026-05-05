@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { applyPlayerNames, getPlayerNames } from "../players/names.js";
 import { emitGameState, getLatestGameState } from "../socket/socket.js";
 import { parseGameState } from "./parser.js";
 import type { GsiPayload } from "./types.js";
@@ -44,7 +45,7 @@ gsiRouter.post("/gsi", (req, res) => {
   }
 
   latestRawPayload = mergePayload(latestRawPayload as Record<string, unknown> | undefined, latestIncomingPayload as Record<string, unknown>) as GsiPayload;
-  const gameState = parseGameState(latestRawPayload);
+  const gameState = applyPlayerNames(parseGameState(latestRawPayload));
   emitGameState(gameState);
   res.status(204).send();
 });
@@ -72,6 +73,7 @@ gsiRouter.get("/gsi/debug", (_req, res) => {
       ? Object.values(latest.allplayers).filter((player) => player.state.health > 0).length
       : 0,
     observedPlayerSteamId: latest?.observedPlayerSteamId,
+    playerNames: getPlayerNames(),
     players: latest
       ? Object.values(latest.allplayers).map((player) => ({
           steamId: player.steamId,

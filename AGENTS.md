@@ -19,6 +19,7 @@
 - Useful server checks while running: `GET /health`, `GET /gsi/latest`, and `GET /gsi/debug`.
 - Env defaults are hardcoded: server `PORT=3000`, GSI token `GSI_AUTH_TOKEN=cs2-hud-dev`, server/HUD CORS `HUD_ORIGIN=http://localhost:3001`, HUD socket `NEXT_PUBLIC_SOCKET_URL=http://localhost:3000`, admin upload server `NEXT_PUBLIC_SERVER_URL=http://localhost:3000`, simulator `GSI_URL=http://localhost:3000/gsi`.
 - Uploaded assets are runtime files under root `uploads/{teams,players}/:id.png`; `uploads` is gitignored, IDs must match `[A-Za-z0-9_-]+`, and the upload form field must be named `file`.
+- Player display-name overrides are runtime data in `uploads/player-names.json`; manage them through `GET /players/names`, `PUT /players/:id/name` with JSON `{ "name": "..." }`, or the HUD admin page.
 
 ## CS2 / OBS Gotchas
 - The checked-in `gamestate_integration_cs2_hud.cfg` is the source to copy into CS2's `game/csgo/cfg` directory; restart CS2 after adding or changing it.

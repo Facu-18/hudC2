@@ -36,12 +36,15 @@ export function BottomBar({ gameState }: BottomBarProps) {
   const t = sortPlayers(alivePlayers.filter((player) => player.team === "T")).slice(0, 5);
 
   return (
-    <div className="absolute bottom-4 left-1/2 flex w-[1520px] -translate-x-1/2 items-end justify-center gap-3 overflow-visible">
-      <div className="flex items-end gap-2 overflow-visible">
+    <div
+      className="absolute bottom-[165px] left-1/2 flex w-[1600px] items-end justify-center gap-3 overflow-visible"
+      style={{ transform: "translateX(-50%) scale(0.68)", transformOrigin: "bottom center" }}
+    >
+      <div className="flex items-end gap-1.5 overflow-visible">
         {t.map((player) => <PlayerCard key={player.steamId} player={player} />)}
       </div>
       {observedPlayer ? <PlayerSpectingCard player={observedPlayer} /> : null}
-      <div className="flex items-end gap-2 overflow-visible">
+      <div className="flex items-end gap-1.5 overflow-visible">
         {ct.map((player) => <PlayerCard key={player.steamId} player={player} />)}
       </div>
     </div>

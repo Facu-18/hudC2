@@ -11,7 +11,7 @@ export function BombTimer({ bomb }: BombTimerProps) {
 
   const seconds = Number.parseFloat(bomb.countdown);
   const pct = Number.isFinite(seconds) ? Math.max(0, Math.min(100, (seconds / 40) * 100)) : 0;
-  const displayTime = Number.isFinite(seconds) ? seconds.toFixed(1) : bomb.countdown;
+  const displayTime = Number.isFinite(seconds) ? Math.ceil(seconds).toString() : bomb.countdown;
 
   // Color shifts from orange → red as time runs out
   const isUrgent = Number.isFinite(seconds) && seconds < 10;
@@ -20,109 +20,95 @@ export function BombTimer({ bomb }: BombTimerProps) {
     <div
       style={{
         position: "absolute",
-        top: 144,
+        top: 158,
         left: "50%",
         transform: "translateX(-50%)",
-        width: 320,
-        background: "rgba(18,3,3,0.96)",
-        boxShadow: "0 0 32px rgba(255,34,34,0.5), 0 0 64px rgba(255,34,34,0.2), 0 8px 24px rgba(0,0,0,0.7)",
+        width: 520,
+        height: 34,
+        background: "rgba(12,4,4,0.86)",
+        border: "1px solid rgba(255,80,40,0.28)",
+        boxShadow: "0 8px 22px rgba(0,0,0,0.45), 0 0 18px rgba(255,60,30,0.18)",
         display: "flex",
-        flexDirection: "column",
+        alignItems: "center",
+        gap: 10,
+        padding: "0 12px",
         overflow: "hidden",
+        clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)",
         animation: "fadeInDown 250ms ease-out forwards",
       }}
     >
-      {/* Top alert bar */}
-      <div
-        style={{
-          height: 3,
-          background: "#ff2222",
-          animation: "bombPulse 1s ease-out infinite",
-        }}
-      />
-
-      {/* Main content */}
+      {/* Label */}
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          padding: "10px 16px 8px",
+          gap: 7,
+          flexShrink: 0,
         }}
       >
-        {/* Left: label + blinking indicator */}
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: isUrgent ? "#ff2222" : "#ff5a2a",
+            boxShadow: "0 0 10px rgba(255,60,30,0.8)",
+            animation: "blinkDot 0.8s step-end infinite",
           }}
-        >
-          {/* Blinking dot */}
-          <div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "#ff2222",
-              animation: "blinkDot 0.8s step-end infinite",
-              flexShrink: 0,
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
-              fontSize: 13,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              letterSpacing: "0.18em",
-              color: "rgba(255,180,180,0.9)",
-              lineHeight: 1,
-            }}
-          >
-            Bomb Planted
-          </span>
-        </div>
-
-        {/* Right: countdown */}
+        />
         <span
           style={{
             fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
-            fontSize: 48,
+            fontSize: 12,
             fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.16em",
+            color: "rgba(255,210,190,0.92)",
             lineHeight: 1,
-            color: isUrgent ? "#ff4444" : "#ffffff",
-            letterSpacing: "-0.02em",
-            textShadow: isUrgent
-              ? "0 0 20px rgba(255,68,68,0.8)"
-              : "0 2px 8px rgba(0,0,0,0.6)",
-            animation: isUrgent ? "urgencyPulse 0.5s ease-in-out infinite" : "none",
-            display: "inline-block",
           }}
         >
-          {displayTime}
+          Bomb
         </span>
       </div>
 
       {/* Progress bar */}
       <div
         style={{
-          height: 5,
+          position: "relative",
+          flex: 1,
+          height: 6,
           background: "rgba(0,0,0,0.6)",
-          margin: "0 16px 12px",
           overflow: "hidden",
+          borderRadius: 999,
         }}
       >
         <div
           style={{
             height: "100%",
             width: `${pct}%`,
-            background: "linear-gradient(90deg, #ff2222 0%, #ff5500 100%)",
-            boxShadow: "0 0 8px rgba(255,34,34,0.6)",
+            background: isUrgent ? "linear-gradient(90deg, #ff2222, #ff6a00)" : "linear-gradient(90deg, #ff5a2a, #ffc04d)",
+            boxShadow: "0 0 10px rgba(255,80,40,0.65)",
             transition: "width 0.1s linear",
           }}
         />
       </div>
+
+      {/* Countdown */}
+      <span
+        style={{
+          minWidth: 42,
+          textAlign: "right",
+          fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+          fontSize: 24,
+          fontWeight: 700,
+          lineHeight: 1,
+          color: isUrgent ? "#ff4444" : "#ffffff",
+          textShadow: isUrgent ? "0 0 14px rgba(255,68,68,0.8)" : "0 2px 8px rgba(0,0,0,0.6)",
+          animation: isUrgent ? "urgencyPulse 0.5s ease-in-out infinite" : "none",
+        }}
+      >
+        {displayTime}s
+      </span>
     </div>
   );
 }

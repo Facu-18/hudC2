@@ -3,6 +3,8 @@ import { RoundHistory } from "./RoundHistory";
 import { RoundTimer } from "./RoundTimer";
 import { TeamScore } from "./TeamScore";
 
+const scoreboardOffsetX = 0;
+
 interface TopBarProps {
   gameState: GameState;
 }
@@ -10,8 +12,8 @@ interface TopBarProps {
 export function TopBar({ gameState }: TopBarProps) {
   return (
     <div
-      className="absolute left-1/2 top-8 flex -translate-x-1/2 flex-col items-center"
-      style={{ gap: 6 }}
+      className="absolute top-12 flex flex-col items-center"
+      style={{ gap: 6, left: `calc(50% + ${scoreboardOffsetX}px)`, transform: "translateX(-50%)" }}
     >
       {/* Score row — CT faces inward (flipped), T faces inward (default) */}
       <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
