@@ -3,47 +3,46 @@ import { getEquipmentIconPath, WeaponIcon } from "./WeaponIcon";
 
 interface PlayerCardProps {
   player: Player;
-  variant?: "compact" | "featured";
 }
 
 const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:3000";
 
-// ─── Theme ───────────────────────────────────────────────────────────────────
-// Colors extracted from the Figma Frame 3 design:
-//  base      → bright-blue main background
-//  nameBg    → black name bar
-//  iconCell  → darker-blue for icon cells in stats row
-//  numCell   → mid-blue for number cells in stats row
-//  moneyBg   → same bright-blue as base for the money cell
-//  moneyText → retro green
 function getTheme(team: Player["team"]) {
   if (team === "CT") {
     return {
-      baseBg: "#3D7EFF",        // bright blue background
-      nameBg: "#000000",        // black name bar
-      iconCellBg: "#1A3A6E",    // dark blue – icon cells
-      numCellBg: "#0F2147",     // darker blue – number cells
-      moneyBg: "#3D7EFF",       // same as base – money cell bg
-      moneyText: "#00FF41",     // retro green
+      baseBg: "#1e90ff",
+      nameBg: "rgba(6,20,41,0.98)",
+      iconCellBg: "rgba(10,31,60,0.95)",
+      numCellBg: "rgba(6,20,41,0.95)",
+      moneyBg: "rgba(10,26,50,0.95)",
+      moneyText: "#ffd700",
+      accentColor: "#1e90ff",
+      accentGlow: "rgba(30,144,255,0.28)",
+      accentSoft: "rgba(30,144,255,0.14)",
+      accentDark: "#061429",
       fallbackImage: "/players/ct.png",
     };
   }
   return {
-    baseBg: "#FF6B2B",          // orange background
-    nameBg: "#000000",
-    iconCellBg: "#7B2A00",
-    numCellBg: "#4A1800",
-    moneyBg: "#FF6B2B",
-    moneyText: "#00FF41",
+    baseBg: "#ff6600",
+    nameBg: "rgba(20,8,0,0.98)",
+    iconCellBg: "rgba(58,21,0,0.95)",
+    numCellBg: "rgba(37,13,0,0.95)",
+    moneyBg: "rgba(46,16,0,0.95)",
+    moneyText: "#ffd700",
+    accentColor: "#ff6600",
+    accentGlow: "rgba(255,102,0,0.28)",
+    accentSoft: "rgba(255,102,0,0.14)",
+    accentDark: "#250d00",
     fallbackImage: "/players/tt.png",
   };
 }
 
 function getPlayerImage(player: Player) {
-  return `${serverUrl}/assets/players/${player.steamId}`;
+  const version = Math.floor(Date.now() / 15000);
+  return `${serverUrl}/assets/players/${encodeURIComponent(player.steamId)}?v=${version}`;
 }
 
-// Crosshair icon (SVG)
 function CrosshairIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -57,7 +56,6 @@ function CrosshairIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-// Skull icon (SVG – more accurate skull shape)
 function SkullIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="currentColor">
@@ -70,400 +68,405 @@ function SkullIcon({ size = 24 }: { size?: number }) {
   );
 }
 
-// Utility grenades row
-function UtilityIcons({ player, compact = false }: { player: Player; compact?: boolean }) {
-  const utility = Object.values(player.weapons)
-    .filter((w) => w.name !== "weapon_knife")
+function UtilityStrip({ player }: { player: Player }) {
+  const grenades = Object.values(player.weapons)
     .filter((w) =>
       w.type.toLowerCase().includes("grenade") ||
       w.name.includes("grenade") ||
       w.name.includes("molotov")
     )
-    .slice(0, compact ? 3 : 4);
-
-  const size = compact ? "h-7 w-7" : "h-10 w-10";
-  const gap = compact ? "gap-1" : "gap-2";
+    .slice(0, 3);
 
   return (
-    <div className={`flex items-center ${gap}`}>
-      {utility.map((w, i) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      {grenades.map((w, i) => (
         <img
           key={`${w.name}-${i}`}
           src={getEquipmentIconPath(w.name)}
           alt={w.name.replace("weapon_", "")}
-          className={`${size} object-contain brightness-0 invert`}
+          style={{
+            height: 16,
+            width: 16,
+            objectFit: "contain",
+            filter: "brightness(0) invert(1)",
+            opacity: 0.85,
+          }}
         />
       ))}
     </div>
   );
 }
 
-// ─── Featured card (observed / center player) ─────────────────────────────────
-// Matches Figma Frame 3 exactly:
-//  • Blue rect fills the card body
-//  • Player image is taller than the card – head overflows above the top edge
-//  • Utility icons + armor at the bottom of the blue area (left & right)
-//  • Weapon left, HP number right, both sitting on the very bottom of the blue area
-//  • Black name bar below
-//  • Stats row with alternating dark cells at the very bottom
-function FeaturedCard({ player, theme }: { player: Player; theme: ReturnType<typeof getTheme> }) {
-  const activeWeapon = Object.values(player.weapons).find((w) => w.state === "active");
+// ─── Compact PlayerCard ────────────────────────────────────────────────────────
+//
+// Layout (bottom → top, absolute positioning):
+//   STATS_H  (24px) — K / D / $
+//   NAME_H   (26px) — accent bar + player name
+//   EQUIP_H  (30px) — weapon icon (left) + grenade icons (right)
+//   PHOTO_H  (132px) — player photo + HP overlay + armor icon
+//   OVERFLOW (36px)  — head overflows above the visible card body
+//
+export function PlayerCard({ player }: PlayerCardProps) {
+  if (player.state.health <= 0) return null;
 
-  // Card body dimensions (blue area + name bar + stats row, no overflow)
-  const CARD_W = 310;
-  const BLUE_H = 320;   // blue photo area
-  const NAME_H = 52;    // black name bar
-  const STATS_H = 52;   // stats row
-  const TOTAL_H = BLUE_H + NAME_H + STATS_H;
-  const OVERFLOW = 120; // how far the image spills above the blue area
-
-  return (
-    // Outer wrapper must be tall enough to show the overflowing image
-    <div
-      style={{ width: CARD_W, height: TOTAL_H + OVERFLOW, position: "relative" }}
-    >
-      {/* ── Blue background (card body, bottom-aligned) ── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H,
-          left: 0,
-          right: 0,
-          height: BLUE_H,
-          backgroundColor: theme.baseBg,
-        }}
-      />
-
-      {/* ── Player image (overflows above the blue area) ── */}
-      <img
-        src={getPlayerImage(player)}
-        alt={player.name}
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H,
-          left: "50%",
-          transform: "translateX(-50%)",
-          height: BLUE_H + OVERFLOW,
-          maxWidth: "none",
-          objectFit: "contain",
-          zIndex: 10,
-        }}
-        onError={(e) => { e.currentTarget.src = theme.fallbackImage; }}
-      />
-
-      {/* ── Overlay: utility icons + armor ── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H + 56,
-          left: 16,
-          right: 16,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <UtilityIcons player={player} />
-        {player.state.armor > 0 && (
-          <img
-            src={player.state.helmet ? "/equipment/armor_helmet.svg" : "/equipment/armor.svg"}
-            alt="Armor"
-            style={{ height: 52, width: 52, objectFit: "contain", filter: "brightness(0) invert(1)" }}
-          />
-        )}
-      </div>
-
-      {/* ── Overlay: active weapon (left) + HP (right) ── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H + 6,
-          left: 12,
-          right: 12,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-        }}
-      >
-        <WeaponIcon weaponName={activeWeapon?.name} className="h-14 w-44 object-contain brightness-0 invert" />
-        <span
-          style={{
-            fontFamily: "'Bebas Neue', Impact, sans-serif",
-            fontSize: 80,
-            fontWeight: 900,
-            lineHeight: 1,
-            color: "#FFFFFF",
-            textShadow: "2px 2px 8px rgba(0,0,0,0.5)",
-            letterSpacing: "-2px",
-          }}
-        >
-          {player.state.health}
-        </span>
-      </div>
-
-      {/* ── Name bar (black) ── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H,
-          left: 0,
-          right: 0,
-          height: NAME_H,
-          backgroundColor: theme.nameBg,
-          display: "flex",
-          alignItems: "center",
-          paddingLeft: 16,
-          zIndex: 30,
-          overflow: "hidden",
-        }}
-      >
-        <span
-          style={{
-            color: "#FFFFFF",
-            fontSize: 34,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.12em",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            fontFamily: "Arial Black, Arial, sans-serif",
-          }}
-        >
-          {player.name}
-        </span>
-      </div>
-
-      {/* ── Stats row ── */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: STATS_H,
-          display: "flex",
-          zIndex: 30,
-        }}
-      >
-        {/* Crosshair icon cell */}
-        <div style={{ width: 56, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "white" }}>
-          <CrosshairIcon size={28} />
-        </div>
-        {/* Kills number cell */}
-        <div style={{ width: 64, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
-          <span style={{ color: "#FFFFFF", fontSize: 30, fontWeight: 700, fontFamily: "Arial, sans-serif" }}>
-            {player.match_stats.kills}
-          </span>
-        </div>
-        {/* Skull icon cell */}
-        <div style={{ width: 56, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "white" }}>
-          <SkullIcon size={28} />
-        </div>
-        {/* Deaths number cell */}
-        <div style={{ width: 64, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
-          <span style={{ color: "#FFFFFF", fontSize: 30, fontWeight: 700, fontFamily: "Arial, sans-serif" }}>
-            {player.match_stats.deaths}
-          </span>
-        </div>
-        {/* Money cell – flex-1 fills remaining width */}
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.moneyBg }}>
-          <span
-            style={{
-              color: theme.moneyText,
-              fontSize: 28,
-              fontWeight: 700,
-              fontFamily: "'Courier New', Courier, monospace",
-              letterSpacing: "0.15em",
-              textShadow: `0 0 8px ${theme.moneyText}`,
-            }}
-          >
-            {player.state.money}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Compact card (non-observed players) ─────────────────────────────────────
-function CompactCard({ player, theme }: { player: Player; theme: ReturnType<typeof getTheme> }) {
-  const activeWeapon = Object.values(player.weapons).find((w) => w.state === "active");
-
-  const CARD_W = 148;
-  const BLUE_H = 170;
-  const NAME_H = 28;
-  const STATS_H = 28;
-  const OVERFLOW = 50;
-  const TOTAL_H = BLUE_H + NAME_H + STATS_H;
-
-  return (
-    <div style={{ width: CARD_W, height: TOTAL_H + OVERFLOW, position: "relative" }}>
-      {/* Blue background */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H,
-          left: 0,
-          right: 0,
-          height: BLUE_H,
-          backgroundColor: theme.baseBg,
-        }}
-      />
-
-      {/* Player image */}
-      <img
-        src={getPlayerImage(player)}
-        alt={player.name}
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H,
-          left: "50%",
-          transform: "translateX(-50%)",
-          height: BLUE_H + OVERFLOW,
-          maxWidth: "none",
-          objectFit: "contain",
-          zIndex: 10,
-        }}
-        onError={(e) => { e.currentTarget.src = theme.fallbackImage; }}
-      />
-
-      {/* Utility + armor */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H + 30,
-          left: 6,
-          right: 6,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        <UtilityIcons player={player} compact />
-        {player.state.armor > 0 && (
-          <img
-            src={player.state.helmet ? "/equipment/armor_helmet.svg" : "/equipment/armor.svg"}
-            alt="Armor"
-            style={{ height: 24, width: 24, objectFit: "contain", filter: "brightness(0) invert(1)" }}
-          />
-        )}
-      </div>
-
-      {/* Weapon + HP */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H + NAME_H + 4,
-          left: 6,
-          right: 6,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-        }}
-      >
-        <WeaponIcon weaponName={activeWeapon?.name} className="h-8 w-20 object-contain brightness-0 invert" />
-        <span
-          style={{
-            fontFamily: "'Bebas Neue', Impact, sans-serif",
-            fontSize: 38,
-            fontWeight: 900,
-            lineHeight: 1,
-            color: "#FFFFFF",
-            textShadow: "1px 1px 4px rgba(0,0,0,0.5)",
-          }}
-        >
-          {player.state.health}
-        </span>
-      </div>
-
-      {/* Name bar */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: STATS_H,
-          left: 0,
-          right: 0,
-          height: NAME_H,
-          backgroundColor: theme.nameBg,
-          display: "flex",
-          alignItems: "center",
-          paddingLeft: 8,
-          zIndex: 30,
-          overflow: "hidden",
-        }}
-      >
-        <span
-          style={{
-            color: "#FFFFFF",
-            fontSize: 16,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            fontFamily: "Arial Black, Arial, sans-serif",
-          }}
-        >
-          {player.name}
-        </span>
-      </div>
-
-      {/* Stats row */}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: STATS_H,
-          display: "flex",
-          zIndex: 30,
-        }}
-      >
-        <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "white" }}>
-          <CrosshairIcon size={14} />
-        </div>
-        <div style={{ width: 32, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
-          <span style={{ color: "#FFFFFF", fontSize: 15, fontWeight: 700 }}>{player.match_stats.kills}</span>
-        </div>
-        <div style={{ width: 28, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.iconCellBg, color: "white" }}>
-          <SkullIcon size={14} />
-        </div>
-        <div style={{ width: 32, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.numCellBg }}>
-          <span style={{ color: "#FFFFFF", fontSize: 15, fontWeight: 700 }}>{player.match_stats.deaths}</span>
-        </div>
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: theme.moneyBg }}>
-          <span
-            style={{
-              color: theme.moneyText,
-              fontSize: 13,
-              fontWeight: 700,
-              fontFamily: "'Courier New', Courier, monospace",
-              letterSpacing: "0.1em",
-              textShadow: `0 0 6px ${theme.moneyText}`,
-            }}
-          >
-            {player.state.money}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Public export ────────────────────────────────────────────────────────────
-export function PlayerCard({ player, variant = "compact" }: PlayerCardProps) {
   const theme = getTheme(player.team);
+  const activeWeapon = Object.values(player.weapons).find((w) => w.state === "active");
 
-  if (variant === "featured") {
-    return <FeaturedCard player={player} theme={theme} />;
-  }
+  const CARD_W   = 118;
+  const PHOTO_H  = 116;
+  const EQUIP_H  = 26;
+  const NAME_H   = 22;
+  const STATS_H  = 22;
+  const OVERFLOW = 24;
 
-  return <CompactCard player={player} theme={theme} />;
+  const equipBottom = STATS_H + NAME_H;                        // 50
+  const photoBottom = STATS_H + NAME_H + EQUIP_H;             // 80
+  const TOTAL_H  = PHOTO_H + EQUIP_H + NAME_H + STATS_H;      // 212
+
+  const hp = Math.max(0, Math.min(100, player.state.health));
+  const hpColor = hp > 60 ? "#22cc44" : hp > 30 ? "#e6c020" : "#cc2222";
+
+  return (
+    <div
+      style={{
+        width: CARD_W,
+        height: TOTAL_H + OVERFLOW,
+        position: "relative",
+        filter: `drop-shadow(0 0 12px ${theme.accentGlow}) drop-shadow(0 8px 18px rgba(0,0,0,0.5))`,
+      }}
+    >
+      {/* ── Chamfered corner clip (mirrors PlayerSpectingCard language) ── */}
+      {/* Applied to the main body (everything below OVERFLOW) via an inner wrapper */}
+      <div
+        style={{
+          position: "absolute",
+          top: OVERFLOW,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          clipPath: "polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)",
+          overflow: "hidden",
+          // Inset glow matching the speccing card style
+          boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.07), inset 0 0 28px ${theme.accentSoft}`,
+        }}
+      >
+        {/* ── Photo area ── */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            // height covers from top of body down to equipBottom from the bottom of the body
+            bottom: equipBottom,
+            background: `linear-gradient(180deg, ${theme.baseBg}dd 0%, ${theme.accentDark} 100%)`,
+            overflow: "hidden",
+          }}
+        >
+          <img
+            src={getPlayerImage(player)}
+            alt={player.name}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center 18%",
+              transform: "scale(1.04)",
+              filter: "contrast(1.06) saturate(1.08)",
+            }}
+            onError={(e) => { e.currentTarget.src = theme.fallbackImage; }}
+          />
+          {/* Heavy vignette at the bottom — makes HP number and equip strip legible */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(180deg, transparent 38%, rgba(0,0,0,0.55) 78%, rgba(0,0,0,0.78) 100%)",
+            }}
+          />
+          {/* Left team-color edge stripe */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: 3,
+              background: `linear-gradient(180deg, ${theme.accentColor} 0%, ${theme.accentColor}55 100%)`,
+            }}
+          />
+        </div>
+
+        {/* ── Top accent bar (3px) ── */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 3,
+            background: `linear-gradient(90deg, ${theme.accentColor} 0%, ${theme.accentColor}88 100%)`,
+          }}
+        />
+
+        {/* ── Armor icon — top-right corner ── */}
+        {player.state.armor > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              top: 6,
+              right: 16, // offset left of chamfered corner
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+            }}
+          >
+            <img
+              src={player.state.helmet ? "/equipment/armor_helmet.svg" : "/equipment/armor.svg"}
+              alt="Armor"
+              style={{
+                height: 15,
+                width: 15,
+                objectFit: "contain",
+                filter: "brightness(0) invert(1)",
+                opacity: 0.75,
+              }}
+            />
+          </div>
+        )}
+
+        {/* ── HP number — bottom-right of photo, with semi-transparent pill background ── */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: equipBottom + 6,
+            right: 6,
+            display: "flex",
+            alignItems: "baseline",
+            gap: 1,
+            background: "rgba(0,0,0,0.45)",
+            borderRadius: 3,
+            padding: "1px 4px",
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+              fontSize: 27,
+              fontWeight: 700,
+              lineHeight: 1,
+              color: "#ffffff",
+              textShadow: `0 2px 10px rgba(0,0,0,0.9), 0 0 8px ${hpColor}60`,
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {player.state.health}
+          </span>
+        </div>
+
+        {/* ── HP bar — 4px strip at photo bottom edge ── */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: equipBottom,
+            left: 0,
+            right: 0,
+            height: 4,
+            background: "rgba(0,0,0,0.6)",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${hp}%`,
+              background: `linear-gradient(90deg, ${hpColor}cc, ${hpColor})`,
+              boxShadow: `0 0 8px ${hpColor}`,
+              transition: "width 0.3s ease, background 0.3s ease",
+            }}
+          />
+        </div>
+
+        {/* ── Equipment strip — weapon icon LEFT (bigger), grenades RIGHT ── */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: NAME_H + STATS_H,
+            left: 0,
+            right: 0,
+            height: EQUIP_H,
+            background: "rgba(4,4,12,0.97)",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingLeft: 7,
+            paddingRight: 6,
+          }}
+        >
+          <WeaponIcon
+            weaponName={activeWeapon?.name}
+            className="h-[16px] w-[56px] object-contain brightness-0 invert"
+          />
+          <UtilityStrip player={player} />
+        </div>
+
+        {/* ── Name bar — with left accent stripe ── */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: STATS_H,
+            left: 0,
+            right: 0,
+            height: NAME_H,
+            backgroundColor: theme.nameBg,
+            borderTop: `1px solid ${theme.accentColor}22`,
+            display: "flex",
+            alignItems: "center",
+            overflow: "hidden",
+          }}
+        >
+          {/* Left accent stripe */}
+          <div
+            style={{
+              flexShrink: 0,
+              width: 3,
+              alignSelf: "stretch",
+              background: theme.accentColor,
+            }}
+          />
+          <span
+            style={{
+              marginLeft: 6,
+              marginRight: 5,
+              color: "#f0f4ff",
+              fontSize: 12,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+              lineHeight: 1,
+            }}
+          >
+            {player.name}
+          </span>
+        </div>
+
+        {/* ── Stats row — K / D / $ ── */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: STATS_H,
+            display: "flex",
+          }}
+        >
+          {/* Kill icon cell */}
+          <div
+            style={{
+              width: 22,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: theme.iconCellBg,
+              color: `${theme.accentColor}cc`,
+              borderTop: `1px solid ${theme.accentColor}18`,
+            }}
+          >
+            <CrosshairIcon size={11} />
+          </div>
+          {/* Kill count */}
+          <div
+            style={{
+              width: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: theme.numCellBg,
+              borderTop: `1px solid rgba(255,255,255,0.04)`,
+            }}
+          >
+            <span
+              style={{
+                color: "#fff",
+                 fontSize: 12,
+                fontWeight: 700,
+                fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+                lineHeight: 1,
+              }}
+            >
+              {player.match_stats.kills}
+            </span>
+          </div>
+          {/* Death icon cell */}
+          <div
+            style={{
+              width: 22,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: theme.iconCellBg,
+              color: "rgba(255,255,255,0.4)",
+              borderTop: `1px solid rgba(255,255,255,0.03)`,
+            }}
+          >
+            <SkullIcon size={11} />
+          </div>
+          {/* Death count */}
+          <div
+            style={{
+              width: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: theme.numCellBg,
+              borderTop: `1px solid rgba(255,255,255,0.04)`,
+            }}
+          >
+            <span
+              style={{
+                color: "rgba(255,255,255,0.82)",
+                fontSize: 12,
+                fontWeight: 700,
+                fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+                lineHeight: 1,
+              }}
+            >
+              {player.match_stats.deaths}
+            </span>
+          </div>
+          {/* Money */}
+          <div
+            style={{
+              flex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: theme.moneyBg,
+              borderLeft: `1px solid rgba(255,215,0,0.10)`,
+              borderTop: `1px solid rgba(255,215,0,0.08)`,
+              gap: 1,
+            }}
+          >
+            <span
+              style={{
+                color: theme.moneyText,
+                fontSize: 10,
+                fontWeight: 700,
+                fontFamily: "Rajdhani, 'Arial Black', Arial, sans-serif",
+                textShadow: `0 0 8px ${theme.moneyText}80`,
+                lineHeight: 1,
+              }}
+            >
+              ${player.state.money}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

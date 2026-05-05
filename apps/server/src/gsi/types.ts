@@ -1,4 +1,7 @@
 export interface GsiPayload {
+  auth?: {
+    token?: string;
+  };
   player?: {
     steamid?: string;
     name?: string;
@@ -14,6 +17,10 @@ export interface GsiPayload {
   round?: {
     phase?: string;
     bomb?: string;
+  };
+  phase_countdowns?: {
+    phase?: string;
+    phase_ends_in?: string;
   };
   allplayers?: Record<string, GsiPlayerPayload>;
   bomb?: {
@@ -34,6 +41,7 @@ export interface GsiPlayerPayload {
   state?: {
     health?: number;
     armor?: number;
+    helmet?: boolean;
     money?: number;
     equip_value?: number;
   };
@@ -47,6 +55,9 @@ export interface GsiPlayerPayload {
     name?: string;
     type?: string;
     state?: string;
+    ammo_clip?: number;
+    ammo_clip_max?: number;
+    ammo_reserve?: number;
   }>;
   position?: string;
   forward?: string;
