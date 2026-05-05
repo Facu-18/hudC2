@@ -8,3 +8,5 @@ uploads
 npm-debug.log*
 .logs
 .turbo
+.claude
+.agents
